@@ -1,86 +1,46 @@
-import { NextResponse } from "next/server";
-import { waitlistSchema, DISPOSABLE_DOMAINS } from "@/lib/waitlist-schema";
+// app/api/waitlist/route.ts
+export async function POST(req: Request) {
+  const { email, consent } = await req.json();
 
-export const runtime = "nodejs";
-
-// Simple in-memory rate limiter (per-process). For production, swap to
-// Upstash / Redis. The brief asks for 5 req/min/IP.
-const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 5;
-const bucket = new Map<string, { count: number; reset: number }>();
-
-function rateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = bucket.get(ip);
-  if (!entry || now > entry.reset) {
-    bucket.set(ip, { count: 1, reset: now + WINDOW_MS });
-    return true;
-  }
-  if (entry.count >= MAX_PER_WINDOW) return false;
-  entry.count += 1;
-  return true;
-}
-
-export async function POST(request: Request) {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    "unknown";
-
-  if (!rateLimit(ip)) {
-    return NextResponse.json(
-      { ok: false, error: "rate_limited" },
-      { status: 429 }
-    );
+  if (!consent) return Response.json({ error: "consent_required" }, { status: 400 });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return Response.json({ error: "invalid_email" }, { status: 400 });
   }
 
-  let json: unknown;
-  try {
-    json = await request.json();
-  } catch {
-    return NextResponse.json(
-      { ok: false, error: "invalid_json" },
-      { status: 400 }
-    );
-  }
+  const res = await fetch(
+    "https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Klaviyo-API-Key ${process.env.KLAVIYO_PRIVATE_KEY}`,
+        "Content-Type": "application/json",
+        "revision": "2024-10-15",
+      },
+      body: JSON.stringify({
+        data: {
+          type: "profile-subscription-bulk-create-job",
+          attributes: {
+            profiles: {
+              data: [{
+                type: "profile",
+                attributes: {
+                  email,
+                  subscriptions: {
+                    email: { marketing: { consent: "SUBSCRIBED" } },
+                  },
+                },
+              }],
+            },
+            historical_import: false,
+          },
+          relationships: {
+            list: { data: { type: "list", id: process.env.KLAVIYO_LIST_ID } },
+          },
+        },
+      }),
+    }
+  );
 
-  const parsed = waitlistSchema.safeParse(json);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { ok: false, error: "validation", issues: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
-
-  const { email, website, source, consentVersion } = parsed.data;
-
-  // Honeypot — silently accept to avoid leaking the trap
-  if (website && website.length > 0) {
-    return NextResponse.json({ ok: true });
-  }
-
-  const domain = email.split("@")[1]?.toLowerCase() ?? "";
-  if (DISPOSABLE_DOMAINS.has(domain)) {
-    return NextResponse.json(
-      { ok: false, error: "disposable_email" },
-      { status: 400 }
-    );
-  }
-
-  // TODO wire up Mailchimp / Resend / Supabase before launch.
-  // For now, log the signup with consent metadata so it's captured
-  // even in preview deployments. Replace this with a real store.
-  const record = {
-    email,
-    source,
-    consentVersion,
-    consentGivenAt: new Date().toISOString(),
-    ip,
-    userAgent: request.headers.get("user-agent") ?? "",
-    list: "waitlist_prelaunch_2026",
-  };
-  // eslint-disable-next-line no-console
-  console.log("[waitlist] signup", record);
-
-  return NextResponse.json({ ok: true });
+  if (!res.ok) return Response.json({ error: "klaviyo_failed" }, { status: 502 });
+  return Response.json({ ok: true });
 }
