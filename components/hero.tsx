@@ -68,7 +68,7 @@ function ProductPlinth() {
       />
       <div className="relative h-full w-full overflow-hidden rounded-card shadow-cta ring-1 ring-brand-green/10 motion-safe:animate-float-y">
         <Image
-          src="/images/hero-shot.png"
+          src="/images/hero-shot.webp"
           alt="Vitabits grüni gumivitamin — elégedett vásárló a tasakkal a konyhában"
           fill
           priority
