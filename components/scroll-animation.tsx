@@ -277,7 +277,7 @@ export function ScrollAnimation() {
                     transitionDelay: shown ? `${i * 40}ms` : "0ms",
                   }}
                 >
-                  {`„${line.text}"`}
+                  {line.text}
                 </li>
               );
             })}
