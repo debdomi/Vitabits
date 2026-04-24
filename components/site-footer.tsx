@@ -10,7 +10,7 @@ const LEGAL = [
 
 const SOCIALS = [
   { href: "https://instagram.com", label: "Instagram", Icon: Instagram },
-  { href: "https://facebook.com", label: "Facebook", Icon: Facebook },
+  { href: "https://www.facebook.com/profile.php?id=61572084073961", label: "Facebook", Icon: Facebook },
   { href: "https://youtube.com", label: "YouTube", Icon: Youtube },
   { href: "https://tiktok.com", label: "TikTok", Icon: TikTokIcon },
   { href: "https://pinterest.com", label: "Pinterest", Icon: PinterestIcon },

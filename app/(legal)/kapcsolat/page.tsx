@@ -13,9 +13,9 @@ export default function Page() {
         Kérdésed van a várólistával kapcsolatban? Írj a{" "}
         <a
           className="font-medium text-brand-green underline-offset-2 hover:underline"
-          href="mailto:hello@vitabits.hu"
+          href="mailto:info@vitabits.hu"
         >
-          hello@vitabits.hu
+          info@vitabits.hu
         </a>{" "}
         címre, és hamarosan válaszolunk.
       </p>
